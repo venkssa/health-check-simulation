@@ -27,7 +27,7 @@ func TestNonBlockingSerialTracker_GetStatusOfDependentServices(t *testing.T) {
 	healthyTracker := trackerWithWaitGroup{wg, Status{true, "HealthyService", "All good", time.Now()}}
 	healthyTracker2 := trackerWithWaitGroup{wg, Status{true, "HealthyService2", "All Ok", time.Now()}}
 
-	tracker := &NonBlockingSerialTracker{frequency: 5 * time.Millisecond}
+	tracker := &NonBlockingSerialTracker{frequency: 10 * time.Millisecond}
 	tracker.Register(healthyTracker)
 	tracker.Register(healthyTracker2)
 
