@@ -69,41 +69,21 @@ func buildOverallStatus(statuses []Status) OverallStatus {
 	}
 }
 
-func pendingOverallStatus(serviceNames []string) OverallStatus {
-	var pendingStatuses []Status
-	for _, serviceName := range serviceNames {
-		pendingStatus := Status{
-			IsHealthy:   false,
-			ServiceName: serviceName,
-			Msg:         "Health check pending.",
-			Timestamp:   time.Now(),
-		}
-		pendingStatuses = append(pendingStatuses, pendingStatus)
-	}
-	return OverallStatus{
-		IsHealthy: false,
-		Msg:       "Health check pending.",
-		DependentServiceStatuses: pendingStatuses,
-		Timestamp:                time.Now(),
-	}
-}
-
-func stoppedHealthCheckStatus(serviceNames []string) OverallStatus {
+func buildUnhealthyOverallStatus(serviceNames []string, msg string) OverallStatus {
 	var stoppedStatuses []Status
 	for _, serviceName := range serviceNames {
 		stoppedStatus := Status{
 			IsHealthy:   false,
 			ServiceName: serviceName,
-			Msg:         "Health check stopped.",
+			Msg:         msg,
 			Timestamp:   time.Now(),
 		}
 		stoppedStatuses = append(stoppedStatuses, stoppedStatus)
 	}
 	return OverallStatus{
 		IsHealthy: false,
-		Msg:       "Health check stopped.",
+		Msg:       msg,
 		DependentServiceStatuses: stoppedStatuses,
 		Timestamp:                time.Now(),
 	}
 }
-
