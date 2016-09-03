@@ -1,12 +1,10 @@
 package healthcheck
 
 import (
-	"testing"
 	"time"
 )
 
 type alwaysHealthyHealthChecker struct {
-	t     *testing.T
 	delay time.Duration
 }
 

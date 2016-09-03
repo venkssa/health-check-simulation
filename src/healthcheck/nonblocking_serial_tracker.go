@@ -9,13 +9,13 @@ const defaultFrequency = 3 * time.Second
 
 type NonBlockingSerialTracker struct {
 	HealthCheckers
+	Frequency     time.Duration
 
-	frequency time.Duration
-	start     sync.Once
-	stop      sync.Once
+	start         sync.Once
+	stop          sync.Once
 
-	backgroundChecker *statusChecker
-	resultUpdater     *statusUpdater
+	statusChecker *statusChecker
+	statusKeeper  *statusKeeper
 }
 
 func (tr *NonBlockingSerialTracker) Register(checker HealthChecker) {
@@ -26,51 +26,50 @@ func (tr *NonBlockingSerialTracker) Start() {
 	tr.start.Do(func() {
 		updateChan := make(chan OverallStatus)
 
-		tr.backgroundChecker = &statusChecker{
+		tr.statusChecker = &statusChecker{
 			checkers:   append([]HealthChecker{}, tr.HealthCheckers...),
-			frequency:  tr.frequency,
+			frequency:  tr.Frequency,
 			updateChan: updateChan,
 			stop:       make(chan struct{}),
 		}
 
-		tr.resultUpdater = &statusUpdater{
-			updateChan: updateChan,
-			lastKnownStatus: make(chan chan OverallStatus),
-			stop:       make(chan struct{}),
+		tr.statusKeeper = &statusKeeper{
+			updateChan:      updateChan,
+			lastKnownStatus: make(chan chan OverallStatus, 5),
+			stop:            make(chan struct{}),
 		}
 
-		go tr.backgroundChecker.Start()
-		go tr.resultUpdater.Start(buildUnhealthyOverallStatus(tr.DependentServiceNames(),
+		go tr.statusChecker.Start()
+		go tr.statusKeeper.Start(buildUnhealthyOverallStatus(tr.DependentServiceNames(),
 			"Health check pending."))
 	})
 }
 
 func (tr *NonBlockingSerialTracker) Stop() {
 	tr.stop.Do(func() {
-		tr.backgroundChecker.Stop()
-		tr.resultUpdater.Stop()
+		tr.statusChecker.Stop()
+		tr.statusKeeper.Stop()
 
-		tr.backgroundChecker = nil
-		tr.resultUpdater = nil
+		tr.statusChecker = nil
+		tr.statusKeeper = nil
 	})
 }
 
 func (tr *NonBlockingSerialTracker) GetStatusOfDependentServices() OverallStatus {
-	if tr.resultUpdater == nil {
+	if tr.statusKeeper == nil {
 		return buildUnhealthyOverallStatus(tr.DependentServiceNames(), "Health check stopped.")
 	}
-	return tr.resultUpdater.GetLastUpdatedStatus()
+	return tr.statusKeeper.GetLastUpdatedStatus()
 }
 
-type statusUpdater struct {
+type statusKeeper struct {
 	updateChan      <-chan OverallStatus
 	lastKnownStatus chan chan OverallStatus
 	stop            chan struct{}
 }
 
-func (su *statusUpdater) Start(initialStatus OverallStatus) {
+func (su *statusKeeper) Start(initialStatus OverallStatus) {
 	lastKnownOverallStatus := initialStatus
-
 	for {
 		select {
 		case statusChan := <-su.lastKnownStatus:
@@ -83,14 +82,14 @@ func (su *statusUpdater) Start(initialStatus OverallStatus) {
 	}
 }
 
-func (su *statusUpdater) Stop() {
+func (su *statusKeeper) Stop() {
 	su.stop <- struct{}{}
 }
 
-func (su *statusUpdater) GetLastUpdatedStatus() OverallStatus {
+func (su *statusKeeper) GetLastUpdatedStatus() OverallStatus {
 	statusChan := make(chan OverallStatus)
 	su.lastKnownStatus <- statusChan
-	return <- statusChan
+	return <-statusChan
 }
 
 type statusChecker struct {
@@ -110,7 +109,6 @@ func (sc *statusChecker) Start() {
 	}
 
 	startFetch := time.After(0 * time.Millisecond)
-
 	for {
 		select {
 		case <-sc.stop:
@@ -120,10 +118,8 @@ func (sc *statusChecker) Start() {
 			for _, checker := range sc.checkers {
 				statuses = append(statuses, checker.GetStatus())
 			}
-			startFetch =  time.After(sc.frequency)
-			select {
-			case sc.updateChan <- buildOverallStatus(statuses):
-			}
+			sc.updateChan <- buildOverallStatus(statuses)
+			startFetch = time.After(sc.frequency)
 		}
 	}
 }
