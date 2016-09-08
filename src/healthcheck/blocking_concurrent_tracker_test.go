@@ -7,7 +7,7 @@ import (
 
 func TestBlockingConcurrentTracker_Register(t *testing.T) {
 	tracker := new(BlockingConcurrentTracker)
-	checker := new(alwaysHealthyHealthChecker)
+	checker := &testHealthChecker{"Checker1", alwaysHelthyStatusFn}
 	tracker.Register(checker)
 
 	names := tracker.DependentServiceNames()
@@ -19,8 +19,8 @@ func TestBlockingConcurrentTracker_Register(t *testing.T) {
 
 func TestBlockingConcurrentTracker_GetStatusOfDependentServices(t *testing.T) {
 	tracker := new(BlockingConcurrentTracker)
-	tracker.Register(new(alwaysHealthyHealthChecker))
-	tracker.Register(new(alwaysFailingHealthChecker))
+	tracker.Register(&testHealthChecker{"Checker1", alwaysHelthyStatusFn})
+	tracker.Register(&testHealthChecker{"Checker1", alwaysFailingStatusFn})
 
 	overallStatus := tracker.GetStatusOfDependentServices()
 
