@@ -9,10 +9,10 @@ const defaultFrequency = 3 * time.Second
 
 type NonBlockingSerialTracker struct {
 	HealthCheckers
-	Frequency     time.Duration
+	Frequency time.Duration
 
-	start         sync.Once
-	stop          sync.Once
+	start sync.Once
+	stop  sync.Once
 
 	statusChecker *statusChecker
 	statusKeeper  *statusKeeper

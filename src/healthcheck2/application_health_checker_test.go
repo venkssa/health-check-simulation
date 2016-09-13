@@ -11,22 +11,22 @@ func TestApplicationHealthChecker_GetOverallStatus(t *testing.T) {
 
 	unhealthyService1 := NewTestHealthChecker("service2", AlwaysFailingStatusFn)
 
-	healthyStatus := OverallStatus{IsHealthy: true}
+	healthyStatus := ApplicationStatus{IsHealthy: true}
 	t.Run("Simple Healthy Overall Status",
 		verifyGetStatus(NewSimpleApplicationHealthChecker(healthyService1, healthyService2), healthyStatus))
 	t.Run("Concurrent Healthy Overall Status",
 		verifyGetStatus(NewConcurrentApplicationHealthChecker(healthyService1, healthyService2), healthyStatus))
 
-	unhealthyStatus := OverallStatus{IsHealthy: false}
+	unhealthyStatus := ApplicationStatus{IsHealthy: false}
 	t.Run("Simple Unhealthy Overall Status",
 		verifyGetStatus(NewSimpleApplicationHealthChecker(unhealthyService1, healthyService2), unhealthyStatus))
 	t.Run("Concurrent Unhelathy Overall Status",
 		verifyGetStatus(NewConcurrentApplicationHealthChecker(unhealthyService1, healthyService2), unhealthyStatus))
 }
 
-func verifyGetStatus(appHealthChecker ApplicationHealthChecker, expectedStatus OverallStatus) func(t *testing.T) {
-	return func (t *testing.T) {
-		actualStatus := appHealthChecker.GetOverallStatus()
+func verifyGetStatus(appHealthChecker ApplicationHealthChecker, expectedStatus ApplicationStatus) func(t *testing.T) {
+	return func(t *testing.T) {
+		actualStatus := appHealthChecker.GetApplicationStatus()
 
 		if actualStatus.IsHealthy != expectedStatus.IsHealthy {
 			t.Errorf("Expected isHealthy to be %v but was %v",
@@ -49,7 +49,7 @@ func TestApplicationHealthChecker_TimeGetOverallStatus(t *testing.T) {
 func timeAndVerifyGetStatus(appHealthChecker ApplicationHealthChecker, expectedDuration time.Duration) func(*testing.T) {
 	return func(t *testing.T) {
 		startTime := time.Now()
-		appHealthChecker.GetOverallStatus()
+		appHealthChecker.GetApplicationStatus()
 		actualDuration := time.Now().Sub(startTime)
 
 		if actualDuration < expectedDuration {

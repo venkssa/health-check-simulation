@@ -1,32 +1,32 @@
 package healthcheck
 
 import (
-	"time"
 	"sync"
 	"testing"
+	"time"
 )
 
 func alwaysHelthyStatusFn(serviceName string) Status {
 	return Status{
-		IsHealthy: true,
+		IsHealthy:   true,
 		ServiceName: serviceName,
-		Msg: "All ok",
-		Timestamp: time.Now(),
+		Msg:         "All ok",
+		Timestamp:   time.Now(),
 	}
 }
 
 func alwaysFailingStatusFn(serviceName string) Status {
 	return Status{
-		IsHealthy: false,
+		IsHealthy:   false,
 		ServiceName: serviceName,
-		Msg: "Oops something went wrong",
-		Timestamp: time.Now(),
+		Msg:         "Oops something went wrong",
+		Timestamp:   time.Now(),
 	}
 }
 
 type testHealthChecker struct {
 	serviceName string
-	statusFn func(serviceName string) Status
+	statusFn    func(serviceName string) Status
 }
 
 func (hc *testHealthChecker) GetStatus() Status {
@@ -63,7 +63,7 @@ func TestChan(t *testing.T) {
 
 	c <- tr
 
-	r := <- c
+	r := <-c
 
 	t.Log(r.GetStatusOfDependentServices())
 }

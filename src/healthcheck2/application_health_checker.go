@@ -6,14 +6,19 @@ import (
 	"time"
 )
 
-type OverallStatus struct {
+type ApplicationStatus struct {
 	IsHealthy          bool
 	Msg                string
 	IndividualStatuses []Status
 	Timestamp          time.Time
 }
 
-func BuildOverallStatus(statuses []Status) OverallStatus {
+func (as ApplicationStatus) Copy() ApplicationStatus {
+	as.IndividualStatuses = append([]Status{}, as.IndividualStatuses...)
+	return as
+}
+
+func BuildApplicationStatus(statuses []Status) ApplicationStatus {
 	var unhealthyServiceNames []string
 	for _, status := range statuses {
 		if !status.IsHealthy {
@@ -29,7 +34,7 @@ func BuildOverallStatus(statuses []Status) OverallStatus {
 		msg = fmt.Sprintf("The list of unhealthy services are [%v]", strings.Join(unhealthyServiceNames, ","))
 	}
 
-	return OverallStatus{
+	return ApplicationStatus{
 		IsHealthy:          isHealthy,
 		Msg:                msg,
 		IndividualStatuses: statuses,
@@ -38,7 +43,8 @@ func BuildOverallStatus(statuses []Status) OverallStatus {
 }
 
 type ApplicationHealthChecker interface {
-	GetOverallStatus() OverallStatus
+	GetApplicationStatus() ApplicationStatus
+	NumOfChecks() uint32
 }
 
 type SimpleApplicationHealthChecker struct {
@@ -49,12 +55,16 @@ func NewSimpleApplicationHealthChecker(checkers ...HealthChecker) SimpleApplicat
 	return SimpleApplicationHealthChecker{checkers: checkers}
 }
 
-func (sahc SimpleApplicationHealthChecker) GetOverallStatus() OverallStatus {
+func (hc SimpleApplicationHealthChecker) GetApplicationStatus() ApplicationStatus {
 	var statuses []Status
-	for _, checker := range sahc.checkers {
+	for _, checker := range hc.checkers {
 		statuses = append(statuses, checker.GetStatus())
 	}
-	return BuildOverallStatus(statuses)
+	return BuildApplicationStatus(statuses)
+}
+
+func (hc SimpleApplicationHealthChecker) NumOfChecks() uint32 {
+	return uint32(len(hc.checkers))
 }
 
 type ConcurrentApplicationHealthChecker struct {
@@ -65,14 +75,14 @@ func NewConcurrentApplicationHealthChecker(checkers ...HealthChecker) Concurrent
 	return ConcurrentApplicationHealthChecker{checkers: checkers}
 }
 
-func (pahc ConcurrentApplicationHealthChecker) GetOverallStatus() OverallStatus {
-	numOfHealthCheckers := len(pahc.checkers)
+func (hc ConcurrentApplicationHealthChecker) GetApplicationStatus() ApplicationStatus {
+	numOfHealthCheckers := len(hc.checkers)
 	statusChan := make(chan Status, numOfHealthCheckers)
 
 	for idx := 0; idx < numOfHealthCheckers; idx++ {
 		go func(checker HealthChecker, result chan<- Status) {
 			result <- checker.GetStatus()
-		}(pahc.checkers[idx], statusChan)
+		}(hc.checkers[idx], statusChan)
 	}
 
 	statuses := make([]Status, numOfHealthCheckers)
@@ -81,5 +91,9 @@ func (pahc ConcurrentApplicationHealthChecker) GetOverallStatus() OverallStatus 
 	}
 
 	close(statusChan)
-	return BuildOverallStatus(statuses)
+	return BuildApplicationStatus(statuses)
+}
+
+func (hc ConcurrentApplicationHealthChecker) NumOfChecks() uint32 {
+	return uint32(len(hc.checkers))
 }

@@ -2,37 +2,46 @@ package healthcheck2
 
 import "time"
 
+type StatusFunc func(string) Status
+
 func AlwaysHelthyStatusFn(serviceName string) Status {
 	return Status{
-		IsHealthy: true,
+		IsHealthy:   true,
 		ServiceName: serviceName,
-		Msg: "All ok",
-		Timestamp: time.Now(),
+		Msg:         "All ok",
+		Timestamp:   time.Now(),
 	}
 }
 
 func AlwaysFailingStatusFn(serviceName string) Status {
 	return Status{
-		IsHealthy: false,
+		IsHealthy:   false,
 		ServiceName: serviceName,
-		Msg: "Oops something went wrong",
-		Timestamp: time.Now(),
+		Msg:         "Oops something went wrong",
+		Timestamp:   time.Now(),
 	}
 }
 
-func Delay(by time.Duration, fn func(string) Status) func(string) Status {
+func Delay(by time.Duration, fn StatusFunc) StatusFunc {
 	return func(serviceName string) Status {
 		time.Sleep(by)
 		return fn(serviceName)
 	}
 }
 
-type TestHealthChecker struct {
-	serviceName string
-	statusFn func(serviceName string) Status
+func Signal(signal chan<- struct{}, fn StatusFunc) StatusFunc {
+	return func(serviceName string) Status {
+		signal <- struct{}{}
+		return fn(serviceName)
+	}
 }
 
-func NewTestHealthChecker(serviceName string, statusFn func(serviceName string) Status) TestHealthChecker {
+type TestHealthChecker struct {
+	serviceName string
+	statusFn    func(serviceName string) Status
+}
+
+func NewTestHealthChecker(serviceName string, statusFn StatusFunc) TestHealthChecker {
 	return TestHealthChecker{serviceName, statusFn}
 }
 
@@ -43,4 +52,3 @@ func (hc TestHealthChecker) GetStatus() Status {
 func (hc TestHealthChecker) ServiceName() string {
 	return hc.serviceName
 }
-
