@@ -1,0 +1,9 @@
+language: go
+
+go:
+ - 1.7
+
+script:
+  - export GOPATH=$HOME/gopath/src/github.com/venkssa/health-check-simulation
+  - cd $GOPATH
+  - go test -v ./...
