@@ -79,15 +79,15 @@ func (hc ConcurrentApplicationHealthChecker) GetApplicationStatus() ApplicationS
 	numOfHealthCheckers := len(hc.checkers)
 	statusChan := make(chan Status, numOfHealthCheckers)
 
-	for idx := 0; idx < numOfHealthCheckers; idx++ {
+	for _, checker := range hc.checkers {
 		go func(checker HealthChecker, result chan<- Status) {
 			result <- checker.GetStatus()
-		}(hc.checkers[idx], statusChan)
+		}(checker, statusChan)
 	}
 
-	statuses := make([]Status, numOfHealthCheckers)
-	for idx := 0; idx < numOfHealthCheckers; idx++ {
-		statuses[idx] = <-statusChan
+	var statuses []Status
+	for range hc.checkers {
+		statuses = append(statuses, <-statusChan)
 	}
 
 	close(statusChan)
