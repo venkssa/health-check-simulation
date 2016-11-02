@@ -1,4 +1,4 @@
-package healthcheck2
+package healthcheck
 
 import (
 	"time"
